@@ -2,13 +2,13 @@
 % Please edit documentation in R/Validate_LPPL.R
 \name{Validate_LPPL}
 \alias{Validate_LPPL}
-\title{Validate_LPPL Function}
+\title{Estimation of the LPPL model using a nonlinear optimization}
 \usage{
 Validate_LPPL(
   tradedate,
   price,
-  mb = base::c(1:3),
-  MovingWindows = base::c(5:10),
+  mb = c(1:3),
+  MovingWindows = c(5:10),
   Right_days = 60,
   Right_scale = 0.8,
   Left_days = 262,
@@ -22,9 +22,9 @@ Validate_LPPL(
 )
 }
 \arguments{
-\item{tradedate}{tradedate Date vector.}
+\item{tradedate}{Use a "Date" type vector as the transaction date.}
 
-\item{price}{price Closing price vector}
+\item{price}{Closing price numeric data vector}
 
 \item{mb}{The LPPL model is estimated using only the data from the critical point to the specified number of days (mb x 20 days). The data mb has a vector type, and the estimated data for each mb specified is returned. The default value is 1 to 3 months.}
 
@@ -32,11 +32,11 @@ Validate_LPPL(
 
 \item{Right_days}{It implements that the peak should drop by 25\% during the right_days (60 days) period, and the default value is 60.}
 
-\item{Right_scale}{set the percentage of drop price from peak price. The default is 0.8.}
+\item{Right_scale}{set the percentage of drop price from peak price. (Default : 0.8)}
 
-\item{Left_days}{The peak of critical time is higher than any peak prior to 262 days. The default is 262}
+\item{Left_days}{The peak of critical time is higher than any peak prior to 262 days (Default : 262)}
 
-\item{h}{Parameter for peak detection / the parameter for peak selection 1<=h<=3 (Default : 1.5)}
+\item{h}{Parameter for peak detection. Parameter is a positive coefficient, meaning that the higher the value of h, the tighter the peak is detected. h is generally set at 1 <= h <= 3. According to Palshikar (2009), the default value was set to 1.5.}
 
 \item{gaRunCnt}{GA Execution Count (Default : 100)}
 
@@ -68,15 +68,19 @@ DT_END   : Last date of data used for crash time estimation
 Best_order : crash time estimation result (RMSE-based sorting data)
 }
 \description{
-Description Line1
+This function estimates a LPPL model using a nonlinear optimization
 }
 \examples{
 
+library(lppl)
 
-Result <- Validate_LPPL(tradedate = NIKKEI$Date
-                       ,price = NIKKEI$Close
-                       ,mb=c(1:3)
-                       ,MovingWindows=c(5,6)
+tradedate <- lppl::NASDAQ$Date
+price <- lppl::NASDAQ$Close
+
+Result <- Validate_LPPL(tradedate =tradedate
+                       ,price = price
+                       ,mb=c(1)
+                       ,MovingWindows=c(5)
                        ,gaRunCnt=100
                        ,gaGenerations=200
                        ,gaPopulation=50)

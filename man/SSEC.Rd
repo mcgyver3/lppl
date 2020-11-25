@@ -18,7 +18,7 @@ A data frame with Date, Price variables:
 SSEC
 }
 \description{
-A dataset of 1,009 rows containing the prices and Date attributes of
-Shanghai Composite Index from July 1, 1997 to June 29, 2001.
+A dataset of 968 rows containing the prices and Date attributes of
+Shanghai Composite Index from January 4, 2012 to December 29, 2015.
 }
 \keyword{datasets}

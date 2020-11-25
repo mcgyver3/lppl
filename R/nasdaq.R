@@ -9,9 +9,4 @@
 #'   \item{Close}{Closing price}
 #' }
 #' @source \url{https://finance.yahoo.com/}
-#' @export
 "NASDAQ"
-
-library(readr)
-NASDAQ <- read_csv("data/nasdaq.csv")
-usethis::use_data(NASDAQ, overwrite = TRUE)
