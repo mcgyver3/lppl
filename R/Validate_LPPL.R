@@ -458,7 +458,6 @@ lppl.validates <- function(
                 solution["RMSE"] = -GA@fitnessValue
                 solution["MW"] = i_mw
                 colnames(solution) <- c("A", "B","Tc","beta","C","omega","phi","RMSE","MW")
-
                 return(solution)
               }
             }
@@ -511,7 +510,7 @@ lppl.validates <- function(
 
         if(parallel == TRUE && !is.null(cluster)){
           stopParallel(cluster)
-          rm(cluster)
+          #rm(cluster)
         }
 
         MWData <- rbind(MWData,Best)

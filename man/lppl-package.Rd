@@ -4,7 +4,7 @@
 \name{lppl-package}
 \alias{lppl}
 \alias{lppl-package}
-\title{lppl: Log-Periodic-Power-Low(LPPL)}
+\title{lppl: Log Periodic Power Low(LPPL)}
 \description{
 The package implements Log-Periodic-Power-Low(LPPL) models proposed to test for financial bubbles.
 }
