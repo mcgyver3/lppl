@@ -101,6 +101,7 @@ lppl.validates <- function(
       #env <- foreach:::.foreachGlobals
       #rm(list=ls(name=env), pos=env)
       #rm(env)
+      cluster<-NULL
 
       base::tryCatch({
         cluster <- parallel::makeCluster(cores-1)
@@ -509,8 +510,13 @@ lppl.validates <- function(
         }
 
         if(parallel == TRUE && !is.null(cluster)){
-          stopParallel(cluster)
-          #rm(cluster)
+          base::tryCatch({
+            stopParallel(cluster))}
+            ,error = function(e) {
+              cluster <- NULL}
+            ,warning = function(w){
+              cluster <- NULL}
+            ,finally = NULL)
         }
 
         MWData <- rbind(MWData,Best)
