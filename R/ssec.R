@@ -1,7 +1,7 @@
 #' SSEC time series data.
 #'
-#' A dataset of 1,009 rows containing the prices and Date attributes of
-#' Shanghai Composite Index from July 1, 1997 to June 29, 2001.
+#' A dataset of 968 rows containing the prices and Date attributes of
+#' Shanghai Composite Index from January 4, 2012 to December 29, 2015.
 #'
 #' @format A data frame with Date, Price variables:
 #' \describe{
@@ -9,9 +9,5 @@
 #'   \item{Close}{Closing price}
 #' }
 #' @source \url{https://finance.yahoo.com/}
-#' @export
 "SSEC"
 
-library(readr)
-SSEC <- read_csv("data/ssec.csv")
-usethis::use_data(SSEC, overwrite = TRUE)

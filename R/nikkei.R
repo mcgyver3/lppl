@@ -9,9 +9,5 @@
 #'   \item{Close}{Closing price}
 #' }
 #' @source \url{https://finance.yahoo.com/}
-#' @export
 "NIKKEI"
 
-library(readr)
-NIKKEI <- read_csv("data/nikkei.csv")
-usethis::use_data(NIKKEI, overwrite = TRUE)

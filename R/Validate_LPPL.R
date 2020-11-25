@@ -1,15 +1,15 @@
-#' Validate_LPPL Function
+#' Estimation of the LPPL model using a nonlinear optimization
 #'
-#' Description Line1
+#' This function estimates a LPPL model using a nonlinear optimization
 #'
-#' @param tradedate tradedate Date vector.
-#' @param price price Closing price vector
+#' @param tradedate Use a "Date" type vector as the transaction date.
+#' @param price Closing price numeric data vector
 #' @param mb The LPPL model is estimated using only the data from the critical point to the specified number of days (mb x 20 days). The data mb has a vector type, and the estimated data for each mb specified is returned. The default value is 1 to 3 months.
 #' @param MovingWindows This is the size of the window used to detect the peak point in the PeakDetection operation, and input as vector data. The default value is 5 to 10 days.
 #' @param Right_days It implements that the peak should drop by 25\% during the right_days (60 days) period, and the default value is 60.
-#' @param Right_scale set the percentage of drop price from peak price. The default is 0.8.
-#' @param Left_days The peak of critical time is higher than any peak prior to 262 days. The default is 262
-#' @param h Parameter for peak detection / the parameter for peak selection 1<=h<=3 (Default : 1.5)
+#' @param Right_scale set the percentage of drop price from peak price. (Default : 0.8)
+#' @param Left_days The peak of critical time is higher than any peak prior to 262 days (Default : 262)
+#' @param h Parameter for peak detection. Parameter is a positive coefficient, meaning that the higher the value of h, the tighter the peak is detected. h is generally set at 1 <= h <= 3. According to Palshikar (2009), the default value was set to 1.5.
 #' @param gaRunCnt GA Execution Count (Default : 100)
 #' @param gaGenerations the maximum number of iterations to run before the GA search is halted. (Default : 500)
 #' @param gaPopulation the population size. (Default : 200)
@@ -39,26 +39,33 @@
 #' Best_order : crash time estimation result (RMSE-based sorting data)
 #'
 #' @importFrom stats C
+#' @importFrom stats sd
+#' @importFrom stats runif
+#' @importFrom stats lm
 #' @importFrom foreach %dopar%
 #'
 #' @examples
 #'
+#' library(lppl)
 #'
-#' Result <- Validate_LPPL(tradedate = NIKKEI$Date
-#'                        ,price = NIKKEI$Close
-#'                        ,mb=c(1:3)
-#'                        ,MovingWindows=c(5,6)
+#' tradedate <- lppl::NASDAQ$Date
+#' price <- lppl::NASDAQ$Close
+#'
+#' Result <- lppl.validates(tradedate =tradedate
+#'                        ,price = price
+#'                        ,mb=c(1)
+#'                        ,MovingWindows=c(5)
 #'                        ,gaRunCnt=100
 #'                        ,gaGenerations=200
 #'                        ,gaPopulation=50)
 #'
 #' @export
 
-Validate_LPPL <- function(
+lppl.validates <- function(
   tradedate
   ,price
-  ,mb=base::c(1:3)
-  ,MovingWindows=base::c(5:10)
+  ,mb=c(1:3)
+  ,MovingWindows=c(5:10)
   ,Right_days=60
   ,Right_scale=0.8
   ,Left_days=262
@@ -71,16 +78,49 @@ Validate_LPPL <- function(
   ,gaCrossover=0.8)
 {
 
+  if (class(tradedate) != "Date") {
+    tradedate <- as.Date(tradedate)
+  }
+
   #Parallel check
   {
-    ParallelMode = FALSE
-    cores = parallel::detectCores()
-    if (cores > 2) {
-      ParallelMode = TRUE
+    chk <- Sys.getenv("_R_CHECK_LIMIT_CORES_", "")
+
+    if (nzchar(chk) && chk == "TRUE"){
+      cores <- 2L
+      parallel = FALSE
+    } else {
+      parallel = TRUE
+      cores = parallel::detectCores()
+    }
+
+    if(parallel == TRUE){
+
+      cores = parallel::detectCores()
+
+      #env <- foreach:::.foreachGlobals
+      #rm(list=ls(name=env), pos=env)
+      #rm(env)
+
+      base::tryCatch({
+        cluster <- parallel::makeCluster(cores-1)
+        doParallel::registerDoParallel(cluster)}
+        ,error = function(e) {
+          cluster <- NULL}
+        ,warning = function(w){
+          print(cluster)}
+        ,finally = NULL)
     }
   }
 
-  #GA fitness function
+
+  # function
+  stopParallel <- function(cluster, ...){
+    # Stop parallel computing for GA package
+    parallel::stopCluster(cluster)
+    foreach::registerDoSEQ()
+    base::invisible()
+  }
   fitness <- function(a1,a2,a3,a4,a5,a6,a7){
 
     y <- df_LogPrice$logprice     #종속변수
@@ -89,7 +129,6 @@ Validate_LPPL <- function(
     D <- y-Re(Y)         #%residual
     return(((1/length(y))*sum(D^2))^0.5) #RMSE
   }
-
   PeakWeight <- function(pk,L_min){
     w1 <- L_min*rep(1,length(pk))-pk
     w2 <- 1./w1
@@ -97,7 +136,7 @@ Validate_LPPL <- function(
     return(pw)
   }
   PeakDetect <- function(LogPrice,MW,h){
-    var_S <- rep(0,length(LogPrice)) #Score
+    S <- rep(0,length(LogPrice)) #Score
     Peaks_Orig <- rep(0,length(LogPrice))  #original peaks
 
     for (idx in (MW+1):(length(LogPrice)-MW)){
@@ -112,31 +151,31 @@ Validate_LPPL <- function(
           rmax <- LogPrice[idx]-LogPrice[idx+j]
         }
       }
-      var_S[idx] <- 0.5*(lmax+rmax)
+      S[idx] <- 0.5*(lmax+rmax)
     }
-    S_Positive <- var_S[var_S>0]
+    S_Positive <- S[S>0]
     mean_PS <- mean(S_Positive)
-    s_PS <- stats::sd(S_Positive)
+    s_PS <- sd(S_Positive)
 
     for (l in 1:(length(LogPrice)-MW)){
-      if (var_S[l]>0 && (var_S[l]-mean_PS)>(h*s_PS)) {
+      if (S[l]>0 && (S[l]-mean_PS)>(h*s_PS)) {
         Peaks_Orig[l] <- LogPrice[l]
       }
     }
-    pk <- base::c()
+    pk <- c()
 
     for (n in (1+MW):(length(LogPrice)-MW-1)){
-      var_d <-0
+      d <-0
       for (m in 1:MW){
         if (Peaks_Orig[n] <= Peaks_Orig[(n-m)] || Peaks_Orig[n] <= Peaks_Orig[(n+m)]){
           break;
         }
         else{
-          var_d <- var_d+1
+          d <- d+1
         }
 
-        if (var_d==MW){
-          pk <- base::c(pk, n)
+        if (d==MW){
+          pk <- c(pk, n)
         }
       }
     }
@@ -209,22 +248,59 @@ Validate_LPPL <- function(
 
     nCnt <- gaPopulation-1
 
-    InitialPopulation <-
-      (matrix(stats::runif(nCnt*7,0,1),nrow = nCnt,ncol = 7) *
+    Population <-
+      (matrix(runif(nCnt*7,0,1),nrow = nCnt,ncol = 7) *
          matrix((upperRange - lowerRange), nrow = nCnt,ncol = 7, byrow = T)) +
       matrix(lowerRange,nrow = nCnt,ncol = 7, byrow = T)
 
-    colnames(InitialPopulation) <- base::c("A", "B","Tc","beta","C","omega","phi")
+    colnames(Population) <- c("A", "B","Tc","beta","C","omega","phi")
 
-    population <- rbind(InitialPopulation,XOUT)
+    populations <- rbind(Population,XOUT)
 
-    object <- list(population,lowerbounds,upperbounds)
-    names(object) = base::c("population","lower","upper")
+    object <- list(populations,lowerbounds,upperbounds)
+    names(object) = c("population","lower","upper")
     return(object)
   }
+  InitialPopulation <- function(PeakList,PeakWeight,LogPrice,datalength,randomvalue){
+
+    beta=1
+    C=0
+    Result <- data.frame(A=double(),B=double(),Tc=double(),beta=double(),C=double(),omega=double(),phi=double())
+    ps <- PeakSelect(PeakList,PeakWeight,randomvalue)
+
+    i <- ps[1]
+    j <- ps[2]
+    k <- ps[3]
+
+    rho <- (j-i)/(k-j)
+
+    if (rho > 1){
+      base_Tc <- (rho*k-j)/(rho-1)
+      base_omega <- 2*pi/log(rho)
+      base_phi <- pi-base_omega*log(base_Tc-k)
+
+      Tc <- Re(base_Tc)
+      omega <- Re(base_omega)
+      phi <- Re(base_phi)
+
+      a <- (1:length(LogPrice))
+
+      X <- data.frame(rep(1,length(a)),Tc*1-a)
+
+      b <- lm(formula = LogPrice~.,data=X)
+      A <- b$coefficients[1]
+      B <- b$coefficients[3]
+
+      row <- data.frame(A,B,Tc,beta,C,omega,phi)
+      colnames(row) <- c("A","B","Tc", "beta","C","omega","phi")
+      Result <- rbind(Result, row)
+    }
+    return(Result)
+  }
+
   #IndentifyStartingPoint
   {
-    id <- base::c(1:length(tradedate))
+    id <- c(1:length(tradedate))
     df <- data.frame(id,tradedate,price)
     df["PERCENT_DROP"]=0
     df["logprice"]=log(price)
@@ -279,7 +355,13 @@ Validate_LPPL <- function(
     cat("---------------------------------------------------------------------------\n")
     Crash_DT <-as.Date(readline('Which date you want to choice among above critical times? (enter the date as 2007-10-31): '),"%Y-%m-%d")
 
-    idx_Crash <- which(dfCRASH$tradedate == as.POSIXlt(Crash_DT))
+    idx_Crash <- 0
+    idx_Crash <- which(dfCRASH$tradedate == Crash_DT)
+
+    if (idx_Crash == 0 || length(idx_Crash) == 0) {
+      cat("You cannot proceed further with the wrong input value.\n")
+      return(NULL);
+    }
 
     id_crash <- dfCRASH[idx_Crash,1]
     DT_crash <- dfCRASH[idx_Crash,2]
@@ -292,12 +374,12 @@ Validate_LPPL <- function(
 
   }
 
-  indexInfo <- list(subset(df,select=base::c("id","tradedate","logprice")),DT_SRTPT,id_SRTPT,DT_crash,id_crash)
-  names(indexInfo) = base::c("LogPrice","DT_SRTPT","id_SRTPT","DT_crash","id_crash")
+  indexInfo <- list(subset(df,select=c("id","tradedate","logprice")),DT_SRTPT,id_SRTPT,DT_crash,id_crash)
+  names(indexInfo) = c("LogPrice","DT_SRTPT","id_SRTPT","DT_crash","id_crash")
 
   Result <- list()
   Result[[1]] <- indexInfo
-  lstnm <- base::c("indexInfo")
+  lstnm <- c("indexInfo")
 
   for (i_mb in mb) {
 
@@ -306,6 +388,7 @@ Validate_LPPL <- function(
 
     id_END <- id_crash-20*i_mb
     DT_END <- df[id_END,2]
+
     df_LogPrice <- subset(df,select=base::c("id","tradedate","logprice"),subset=id >= id_SRTPT & id <= id_END)
 
     #minimum length of data used in estimation
@@ -334,135 +417,65 @@ Validate_LPPL <- function(
         upperbounds <- base::c(A = Inf, B = 0, Tc = Inf, beta = 0.9, C = 1,  omega = 15,  phi = 2*pi)
         Best <- data.frame(A=double(),B=double(),Tc=double(),beta=double(),C=double(),omega=double(),phi=double(),RMSE=double(), MW=integer())
         {
-          if(ParallelMode){
-
-            cl <- parallel::makeCluster(cores-1)
-            doParallel::registerDoParallel(cl)
-
+          if(parallel == TRUE){
             Best <- foreach::foreach(i=1:gaRunCnt, .combine=rbind, .packages = "GA" ) %dopar%
-              {
-                trycount <- 0
-                while(TRUE)
-                {
-                  randomvalue <- stats::runif(1,0,1)
-
-                  #-------------------------------------------------------------
-                  ip <- data.frame(A=double(),B=double(),Tc=double(),beta=double(),C=double(),omega=double(),phi=double())
-                  ps <- PeakSelect(pk,pw,randomvalue)
-
-                  i <- ps[1]
-                  j <- ps[2]
-                  k <- ps[3]
-
-                  rho <- (j-i)/(k-j)
-
-                  if (rho > 1){
-                    base_Tc <- (rho*k-j)/(rho-1)
-                    base_omega <- 2*pi/log(rho)
-                    base_phi <- pi-base_omega*log(base_Tc-k)
-
-                    Tc <- Re(base_Tc)
-                    omega <- Re(base_omega)
-                    phi <- Re(base_phi)
-
-                    a <- (1:length(LogPrice))
-
-                    X <- data.frame(rep(1,length(a)),Tc*1-a)
-
-                    b <- stats::lm(formula = LogPrice~.,data=X)
-                    A <- b$coefficients[1]
-                    B <- b$coefficients[3]
-
-                    row <- data.frame(A,B,Tc,beta,C,omega,phi)
-                    colnames(row) <- base::c("A","B","Tc", "beta","C","omega","phi")
-                    ip <- rbind(ip, row)
-                  }
-
-                  #-------------------------------------------------------------
-
-                  trycount <- trycount+1
-                  if (nrow(ip) > 0 | trycount == 50){
-                    break
-                  }
-                }
-
-                if (nrow(ip) > 0)
-                {
-                  GASetting <- Populations(ip,lowerbounds,upperbounds)
-
-                  # fitness 함수의 기본이 MAX값 추출인 관계로 -fitness를 사용하여 최소값을 찾계끔 처리한다.
-                  GA <- GA::ga(type = "real-valued"
-                           , fitness =  function(x) -fitness(x[1],x[2],x[3],x[4],x[5],x[6],x[7])
-                           , lower = GASetting$lower
-                           , upper = GASetting$upper
-                           , suggestions = GASetting$population
-                           , popSize = gaPopulation
-                           , pcrossover = gaCrossover
-                           , elitism = gaPopulation*gaElitism
-                           , pmutation = gaMutation
-                           , maxiter = gaGenerations
-                           , run = gaGenerations
-                           , monitor = FALSE
-                           #, population = "Population_R"
-                           #, crossover = Crossover_R
-                           #, selection = Crossover_R
-                           #, mutation = mutation_r
-                           , optim = TRUE
-                  )
-
-                  solution <- as.data.frame(GA@solution)
-                  solution["RMSE"] = -GA@fitnessValue
-                  solution["MW"] = i_mw
-                  colnames(solution) <- base::c("A", "B","Tc","beta","C","omega","phi","RMSE","MW")
-                  return(solution)
-                }
-              }
-
-            parallel::stopCluster(cl)
-
-          }
-          else{
-            for (variable in 1:gaRunCnt) {
+            {
               trycount <- 0
               while(TRUE){
-                randomvalue <- stats::runif(1,0,1)
-
-                ip <- data.frame(A=double(),B=double(),Tc=double(),beta=double(),C=double(),omega=double(),phi=double())
-                ps <- PeakSelect(pk,pw,randomvalue)
-
-                i <- ps[1]
-                j <- ps[2]
-                k <- ps[3]
-
-                rho <- (j-i)/(k-j)
-
-                if (rho > 1){
-                  base_Tc <- (rho*k-j)/(rho-1)
-                  base_omega <- 2*pi/log(rho)
-                  base_phi <- pi-base_omega*log(base_Tc-k)
-
-                  Tc <- Re(base_Tc)
-                  omega <- Re(base_omega)
-                  phi <- Re(base_phi)
-
-                  a <- (1:length(LogPrice))
-
-                  X <- data.frame(rep(1,length(a)),Tc*1-a)
-
-                  b <- stats::lm(formula = LogPrice~.,data=X)
-                  A <- b$coefficients[1]
-                  B <- b$coefficients[3]
-
-                  row <- data.frame(A,B,Tc,beta,C,omega,phi)
-                  colnames(row) <- base::c("A","B","Tc", "beta","C","omega","phi")
-                  ip <- rbind(ip, row)
-                }
+                randomvalue <- runif(1,0,1)
+                ip <- InitialPopulation(pk,pw,LogPrice, L_min, randomvalue)
 
                 trycount <- trycount+1
                 if (nrow(ip) > 0 | trycount == 50){
                   break
                 }
               }
+
+              if (nrow(ip) > 0){
+                GASetting <- Populations(ip,lowerbounds,upperbounds)
+
+                # fitness 함수의 기본이 MAX값 추출인 관계로 -fitness를 사용하여 최소값을 찾계끔 처리한다.
+                GA <- GA::ga(type = "real-valued"
+                         , fitness =  function(x) -fitness(x[1],x[2],x[3],x[4],x[5],x[6],x[7])
+                         , lower = GASetting$lower
+                         , upper = GASetting$upper
+                         , suggestions = GASetting$population
+                         , popSize = gaPopulation
+                         , pcrossover = gaCrossover
+                         , elitism = gaPopulation*gaElitism
+                         , pmutation = gaMutation
+                         , maxiter = gaGenerations
+                         , run = gaGenerations
+                         , monitor = FALSE
+                         #, population = "Population_R"
+                         #, crossover = Crossover_R
+                         #, selection = Crossover_R
+                         #, mutation = mutation_r
+                         , optim = TRUE
+                )
+
+                solution <- as.data.frame(GA@solution)
+                solution["RMSE"] = -GA@fitnessValue
+                solution["MW"] = i_mw
+                colnames(solution) <- c("A", "B","Tc","beta","C","omega","phi","RMSE","MW")
+
+                return(solution)
+              }
+            }
+          }
+          else{
+            for (variable in 1:gaRunCnt) {
+              trycount <- 0
+              while(TRUE){
+                randomvalue <- runif(1,0,1)
+                ip <- InitialPopulation(pk,pw,LogPrice, L_min, randomvalue)
+
+                trycount <- trycount+1
+                if (nrow(ip) > 0 | trycount == 50){
+                  break
+                }
+              }
+
               if (nrow(ip) > 0){
                 GASetting <- Populations(ip,lowerbounds,upperbounds)
                 GA <- GA::ga(type = "real-valued"
@@ -486,7 +499,7 @@ Validate_LPPL <- function(
                 solution <- as.data.frame(GA@solution)
                 solution["RMSE"] = -GA@fitnessValue
                 solution["MW"] = i_mw
-                colnames(solution) <- base::c("A", "B","Tc","beta","C","omega","phi","RMSE","MW")
+                colnames(solution) <- c("A", "B","Tc","beta","C","omega","phi","RMSE","MW")
 
                 if(nrow(solution) > 0){
                   Best <- rbind.data.frame(Best,solution)
@@ -495,6 +508,12 @@ Validate_LPPL <- function(
             }
           }
         }
+
+        if(parallel == TRUE && !is.null(cluster)){
+          stopParallel(cluster)
+          rm(cluster)
+        }
+
         MWData <- rbind(MWData,Best)
         eTime1 <- Sys.time()
         cat('MB : ',i_mb,', MW : ',i_mw,' Total Time difference of :', difftime(eTime1, sTime1, units = "secs"),"secs\n")
@@ -503,12 +522,10 @@ Validate_LPPL <- function(
     }
 
     Best_order <- MWData[order(MWData$RMSE),]
-
     mblst <- list(i_mb,id_END,DT_END,Best_order);
-    names(mblst) = base::c("i_mb","id_END","DT_END","Best_order")
+    names(mblst) = c("i_mb","id_END","DT_END","Best_order")
     Result[[(i_mb+1)]] <- mblst
-    lstnm <- base::c(lstnm,paste("MB",i_mb,sep=""))
-
+    lstnm <- c(lstnm,paste("MB",i_mb,sep=""))
     eTime2 <- Sys.time()
     cat('MB : ',i_mb,' Total Time difference of :', difftime(eTime2, sTime2, units = "mins"),"mins\n")
   }

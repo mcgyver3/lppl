@@ -9,9 +9,4 @@
 #'   \item{Close}{Closing price}
 #' }
 #' @source \url{https://finance.yahoo.com/}
-#' @export
 "HSI"
-
-library(readr)
-HSI <- read_csv("data/hsi.csv")
-usethis::use_data(HSI, overwrite = TRUE)
