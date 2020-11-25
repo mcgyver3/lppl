@@ -458,7 +458,6 @@ lppl.validates <- function(
                 solution["RMSE"] = -GA@fitnessValue
                 solution["MW"] = i_mw
                 colnames(solution) <- c("A", "B","Tc","beta","C","omega","phi","RMSE","MW")
-
                 return(solution)
               }
             }
