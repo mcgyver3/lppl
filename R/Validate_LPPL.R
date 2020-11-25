@@ -511,7 +511,7 @@ lppl.validates <- function(
 
         if(parallel == TRUE && !is.null(cluster)){
           base::tryCatch({
-            stopParallel(cluster))}
+            stopParallel(cluster)}
             ,error = function(e) {
               cluster <- NULL}
             ,warning = function(w){
