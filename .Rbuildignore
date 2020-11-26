@@ -7,3 +7,4 @@ README.md
 .Rhistory
 ^data-raw$
 ^LICENSE\.md$
+^README\.Rmd$
