@@ -385,7 +385,7 @@ lppl.validates <- function(
   for (i_mb in mb) {
 
     sTime2 <- Sys.time()
-    cat('MB : ',i_mb," Start ", format(Sys.time(), "%d %X") ,"\n")
+    cat('MB : ',i_mb," Start ", format(Sys.time(), "%X") ,"\n")
 
     id_END <- id_crash-20*i_mb
     DT_END <- df[id_END,2]
