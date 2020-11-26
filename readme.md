@@ -11,7 +11,7 @@ The package implements Log-Periodic-Power-Low(LPPL) models proposed to
 test for financial bubbles.
 
 ## Installation
-
+<!--
 You can install the released version of lppl from
 [CRAN](https://CRAN.R-project.org) with:
 
@@ -21,6 +21,12 @@ install.packages("lppl")
 
 And the development version from [GitHub](https://github.com/) with:
 
+``` r
+# install.packages("devtools")
+devtools::install_github("mcgyver3/lppl")
+```
+-->
+You can install the development version from [GitHub](https://github.com/) with:
 ``` r
 # install.packages("devtools")
 devtools::install_github("mcgyver3/lppl")
