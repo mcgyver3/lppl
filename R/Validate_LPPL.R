@@ -509,16 +509,6 @@ lppl.validates <- function(
           }
         }
 
-        if(parallel == TRUE && !is.null(cluster)){
-          base::tryCatch({
-            stopParallel(cluster)}
-            ,error = function(e) {
-              cluster <- NULL}
-            ,warning = function(w){
-              cluster <- NULL}
-            ,finally = NULL)
-        }
-
         MWData <- rbind(MWData,Best)
         eTime1 <- Sys.time()
         cat('MB : ',i_mb,', MW : ',i_mw,' Total Time difference of :', difftime(eTime1, sTime1, units = "secs"),"secs\n")
@@ -533,6 +523,16 @@ lppl.validates <- function(
     lstnm <- c(lstnm,paste("MB",i_mb,sep=""))
     eTime2 <- Sys.time()
     cat('MB : ',i_mb,' Total Time difference of :', difftime(eTime2, sTime2, units = "mins"),"mins\n")
+  }
+
+  if(parallel == TRUE && !is.null(cluster)){
+    base::tryCatch({
+      stopParallel(cluster)}
+      ,error = function(e) {
+        cluster <- NULL}
+      ,warning = function(w){
+        cluster <- NULL}
+      ,finally = NULL)
   }
 
   names(Result) <- lstnm
