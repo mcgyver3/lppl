@@ -13,12 +13,12 @@ knitr::opts_chunk$set(
 )
 ```
 
-# lppl
+# Log Periodic Power Low(LPPL)
 
 <!-- badges: start -->
 <!-- badges: end -->
 
-The goal of lppl is to ...
+The package implements Log-Periodic-Power-Low(LPPL) models proposed to test for financial bubbles.
 
 ## Installation
 
@@ -40,21 +40,20 @@ This is a basic example which shows you how to solve a common problem:
 
 ```{r example}
 library(lppl)
-## basic example code
+
+tradedate <- lppl::NASDAQ$Date
+price <- lppl::NASDAQ$Close
+
+Result <- lppl.validates(tradedate =tradedate
+                         ,price = price
+                         ,mb=c(1:2)
+                         ,MovingWindows=c(5)
+                         ,gaRunCnt=100
+                         ,gaGenerations=200
+                         ,gaPopulation=50)
 ```
 
-What is special about using `README.Rmd` instead of just `README.md`? You can include R chunks like so:
 
 ```{r cars}
-summary(cars)
+class(Result)
 ```
-
-You'll still need to render `README.Rmd` regularly, to keep `README.md` up-to-date.
-
-You can also embed plots, for example:
-
-```{r pressure, echo = FALSE}
-plot(pressure)
-```
-
-In that case, don't forget to commit and push the resulting figure files, so they display on GitHub!
