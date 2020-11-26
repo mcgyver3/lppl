@@ -47,10 +47,13 @@ Result <- lppl.validates(tradedate =tradedate
 2000-03-10 
 ---------------------------------------------------------------------------
 Which date you want to choice among above critical times? (enter the date as 2007-10-31): 2000-03-10
-MB :  1  Start  27 오전 2:13:21 
-MB :  1 , MW :  5  Total Time difference of : 9.937357 secs
-MB :  1  Total Time difference of : 0.1656393 mins
-MB :  2  Start  27 오전 2:13:31 
+#> MB :  1  Start  02:13:21 
+#> MB :  1 , MW :  5  Total Time difference of : 9.937357 secs
+#> MB :  1  Total Time difference of : 0.1656393 mins
+#> 
+#> MB :  2  Start  02:13:31 
+#> MB :  2 , MW :  5  Total Time difference of : 10.1944 secs
+#> MB :  2  Total Time difference of : 0.1693024 mins
 ```
 
 ``` r
