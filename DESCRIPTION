@@ -20,6 +20,7 @@ Imports:
   parallel (>= 4.0.2),
   foreach (>= 1.5.1),
   dplyr (>= 1.0.2),
+  ggplot2 (>= 3.3.2),
   GA (>= 3.2),
   readr (>= 1.4.0)
 Archs: i386, x64
